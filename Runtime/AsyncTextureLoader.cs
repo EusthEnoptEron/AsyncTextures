@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.IO;
 using System.Threading;
@@ -21,7 +20,7 @@ namespace Zomg.AsyncTextures
     /// <remarks>Note that this class will subscribe to the <see cref="Application.quitting"/> event for clean-up, so you do not necessarily need to dispose yourself.</remarks>
     public class AsyncTextureLoader : IDisposable
     {
-        private static AsyncTextureLoader _Instance = null;
+        private static AsyncTextureLoader _Instance;
 
         /// <summary>
         /// Gets an instance of the loader.
@@ -52,7 +51,7 @@ namespace Zomg.AsyncTextures
         /// <summary>
         /// Gets or sets the decoder used for decoding images.
         /// </summary>
-        public IAsyncImageDecoder ImageDecoder { get; set; } = new AsyncImageDecoder();
+        public IAsyncImageDecoder ImageDecoder { get; set; } = new StbImageDecoder();
 
         private AsyncMonitor _asyncMonitor = new AsyncMonitor();
         private ComputeShader _computeShader;
@@ -74,16 +73,16 @@ namespace Zomg.AsyncTextures
         /// </summary>
         public int InitialComputeBufferSize { get; set; } = 4096 * 4096;
 
-        private ConcurrentQueue<Task> _queue = new ConcurrentQueue<Task>();
-        private int _widthProp = Shader.PropertyToID("Width");
-        private int _heightProp = Shader.PropertyToID("Height");
-        private int _offsetXProp = Shader.PropertyToID("OffsetX");
-        private int _offsetYProp = Shader.PropertyToID("OffsetY");
-        private int _resultProp = Shader.PropertyToID("Result");
-        private int _inputProp = Shader.PropertyToID("Input");
+        private readonly int _widthProp = Shader.PropertyToID("Width");
+        private readonly int _heightProp = Shader.PropertyToID("Height");
+        private readonly int _imageHeightProp = Shader.PropertyToID("ImageHeight");
+        private readonly int _offsetXProp = Shader.PropertyToID("OffsetX");
+        private readonly int _offsetYProp = Shader.PropertyToID("OffsetY");
+        private readonly int _resultProp = Shader.PropertyToID("Result");
+        private readonly int _inputProp = Shader.PropertyToID("Input");
 
-        private CancellationTokenSource _cancellationTokenSource = new CancellationTokenSource();
-        private bool _disposed = false;
+        private readonly CancellationTokenSource _cancellationTokenSource = new CancellationTokenSource();
+        private bool _disposed;
 
         private void Init()
         {
@@ -93,7 +92,7 @@ namespace Zomg.AsyncTextures
 
 
         /// <summary>
-        /// Prewarms the compute shader with the default initial compute buffer size.
+        /// Pre-warms the compute shader with the default initial compute buffer size.
         /// </summary>
         public void Prewarm()
         {
@@ -101,7 +100,7 @@ namespace Zomg.AsyncTextures
         }
 
         /// <summary>
-        /// Prewarms the compute shader for textures of the given resolution.
+        /// Pre-warms the compute shader for textures of the given resolution.
         /// </summary>
         /// <param name="width"></param>
         /// <param name="height"></param>
@@ -314,8 +313,8 @@ namespace Zomg.AsyncTextures
                     token.ThrowIfCancellationRequested();
 
                     int toWrite = Mathf.Min(data.Length - written, BufferSize);
-                    var intbuffer = computeBuffer.BeginWrite<uint>(written / 4, toWrite / 4);
-                    var buffer = intbuffer.Reinterpret<byte>(sizeof(uint));
+                    var pixelBuffer = computeBuffer.BeginWrite<uint>(written / 4, toWrite / 4);
+                    var buffer = pixelBuffer.Reinterpret<byte>(sizeof(uint));
 
                     NativeArray<byte>.Copy(data, written, buffer, 0, toWrite);
 
@@ -340,7 +339,7 @@ namespace Zomg.AsyncTextures
                 _computeShader.SetInt(_heightProp, height);
                 _computeShader.SetInt(_offsetXProp, xOffset);
                 _computeShader.SetInt(_offsetYProp, yOffset);
-                _computeShader.SetInt("ImageHeight", texture.height);
+                _computeShader.SetInt(_imageHeightProp, texture.height);
                 _computeShader.SetBuffer(0, _inputProp, computeBuffer);
 
                 _computeShader.Dispatch(0, Mathf.CeilToInt(width / 8.0f), Mathf.CeilToInt(height / 8.0f), 1);

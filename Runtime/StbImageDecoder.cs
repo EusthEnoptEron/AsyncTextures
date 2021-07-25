@@ -6,7 +6,7 @@ using Zomg.AsyncTextures.Types;
 
 namespace Zomg.AsyncTextures
 {
-    public class AsyncImageDecoder : IAsyncImageDecoder
+    public class StbImageDecoder : IAsyncImageDecoder
     {
         public Task<DecodedImage> DecodeImageAsync(Stream input, CancellationToken cancellationToken = default)
         {
