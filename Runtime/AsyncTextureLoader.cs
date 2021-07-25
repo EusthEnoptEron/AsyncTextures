@@ -88,6 +88,14 @@ namespace Zomg.AsyncTextures
         {
             Debug.Log("Loading compute shader...");
             _computeShader = Resources.Load<ComputeShader>("Shaders/TextureUpload");
+
+#if ZOMG_DEBUG
+            Debug.Log($"{nameof(SystemInfo.supportsComputeShaders)}: {SystemInfo.supportsComputeShaders}");
+            Debug.Log($"{nameof(SystemInfo.maxComputeWorkGroupSize)}: {SystemInfo.maxComputeWorkGroupSize}");
+            Debug.Log($"{nameof(SystemInfo.maxComputeWorkGroupSizeX)}: {SystemInfo.maxComputeWorkGroupSizeX}");
+            Debug.Log($"{nameof(SystemInfo.maxComputeWorkGroupSizeY)}: {SystemInfo.maxComputeWorkGroupSizeY}");
+            Debug.Log($"{nameof(SystemInfo.maxComputeWorkGroupSizeZ)}: {SystemInfo.maxComputeWorkGroupSizeZ}");
+#endif
         }
 
 
@@ -167,11 +175,14 @@ namespace Zomg.AsyncTextures
             _computeBuffer?.Dispose();
 
             // Create new
-            _computeBuffer = new ComputeBuffer(size, sizeof(uint), ComputeBufferType.Structured, ComputeBufferMode.SubUpdates);
+            _computeBuffer = new ComputeBuffer(size, sizeof(uint), ComputeBufferType.Default, ComputeBufferMode.SubUpdates);
         }
 
         private void ReturnBuffer()
         {
+#if ZOMG_DEBUG
+                Debug.Log("Returning buffer...");
+#endif
             // await Task.Yield();
             _asyncMonitor.Pulse();
         }
@@ -219,7 +230,9 @@ namespace Zomg.AsyncTextures
             // Switch to main thread if need be and possible
             await MainThreadRegister.Context;
 
-            var descriptor = new RenderTextureDescriptor(width, height, GraphicsFormat.R8G8B8A8_UNorm, 0, mipCount)
+            var descriptor = new RenderTextureDescriptor(width, height,
+                SystemInfo.GetCompatibleFormat(GraphicsFormat.R8G8B8A8_UNorm, FormatUsage.SetPixels), 0,
+                mipCount)
             {
                 enableRandomWrite = true,
                 autoGenerateMips = false,
@@ -291,6 +304,7 @@ namespace Zomg.AsyncTextures
             await MainThreadRegister.Context;
 
             // Check pre-conditions 
+            Assert.IsTrue(SystemInfo.supportsComputeShaders);
             Assert.IsTrue(texture.width >= xOffset + width);
             Assert.IsTrue(texture.height >= yOffset + height);
             Assert.IsTrue(xOffset >= 0);
@@ -323,12 +337,19 @@ namespace Zomg.AsyncTextures
 
                     if (sw.Elapsed.TotalMilliseconds > UploadTimeSlice)
                     {
+#if ZOMG_DEBUG
+                Debug.Log("Pausing...");
+#endif
                         await Task.Yield();
                         sw.Restart();
                     }
                 }
 
                 await Task.Yield();
+
+#if ZOMG_DEBUG
+                Debug.Log("Done copying!");
+#endif
 
                 // Check for cancellation
                 token.ThrowIfCancellationRequested();
@@ -344,11 +365,18 @@ namespace Zomg.AsyncTextures
 
                 _computeShader.Dispatch(0, Mathf.CeilToInt(width / 8.0f), Mathf.CeilToInt(height / 8.0f), 1);
 
+
+#if ZOMG_DEBUG
+                Debug.Log("Compute shader dispatched!");
+#endif
                 // Wait a frame
                 await Task.Yield();
 
                 if (texture.useMipMap)
                 {
+#if ZOMG_DEBUG
+                Debug.Log("Generating mips...");
+#endif
                     texture.GenerateMips();
                 }
 

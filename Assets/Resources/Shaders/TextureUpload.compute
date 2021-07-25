@@ -2,7 +2,7 @@
 #pragma kernel CSMain
 
 RWTexture2D<float4> Result;
-Buffer<uint> Input;
+StructuredBuffer<uint> Input;
 uint Width;
 uint Height;
 uint OffsetX;
@@ -34,7 +34,7 @@ void CSMain(uint3 id : SV_DispatchThreadID)
     const uint c3 = ((color >> 8) & 0xFF);
     const uint c2 = ((color >> 16) & 0xFF);
     const uint c1 = ((color >> 24) & 0xFF);
-
+    
     Result[uint2(xTex, yTex)] = float4(
         c4 / 255.0,
         c3 / 255.0,

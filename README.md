@@ -102,3 +102,7 @@ The preferred approach would probably be #1, but it is also harder to manage bec
 platforms.
 
 This package tries to implement approach #2.
+
+## Known Issues
+
+- Seems to crash in some cases with a Vulkan backend (null pointer dereference) (observed on Samsung Galaxy S7)
