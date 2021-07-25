@@ -1,0 +1,14 @@
+{
+  "name": "ch.zomg.async-textures",
+  "version": "0.1.0",
+  "displayName": "Asynchronous Textures",
+  "description": "Enables loading (and uploading to GPU) textures asynchronously using compute shaders.",
+  "keywords": [
+    "texture",
+    "asynchronous",
+    "loading"
+  ],
+  "author": {
+    "name": "EusthEnoptEron"
+  }
+}

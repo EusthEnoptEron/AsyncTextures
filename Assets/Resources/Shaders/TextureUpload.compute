@@ -1,0 +1,44 @@
+// Each #kernel tells which function to compile; you can have many kernels
+#pragma kernel CSMain
+
+RWTexture2D<float4> Result;
+Buffer<uint> Input;
+uint Width;
+uint Height;
+uint OffsetX;
+uint OffsetY;
+uint ImageHeight;
+
+// Could be used to support other layouts.
+// uint GetByte(uint index)
+// {
+//     const uint intIndex = index / 4;
+//     const uint bytePosition = index % 4;
+//
+//     return (Input[intIndex] >> bytePosition * 8) % 255;
+// }
+
+[numthreads(8,8,1)]
+void CSMain(uint3 id : SV_DispatchThreadID)
+{
+    const uint xBuffer = min(id.x, Width - 1);
+    const uint yBuffer = min(id.y, Height - 1);
+    const uint xTex = xBuffer + OffsetX;
+    const uint yTex = ImageHeight - (yBuffer + OffsetY) - 1;
+
+    const uint pos = (yBuffer * Width) + xBuffer;
+
+    const uint color = Input[pos];
+
+    const uint c4 = (color & 0xFF);
+    const uint c3 = ((color >> 8) & 0xFF);
+    const uint c2 = ((color >> 16) & 0xFF);
+    const uint c1 = ((color >> 24) & 0xFF);
+
+    Result[uint2(xTex, yTex)] = float4(
+        c4 / 255.0,
+        c3 / 255.0,
+        c2 / 255.0,
+        c1 / 255.0
+    );
+}
