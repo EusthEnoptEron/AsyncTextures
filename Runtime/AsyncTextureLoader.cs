@@ -4,7 +4,6 @@ using System.Diagnostics;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
-using StbImageSharp;
 using Unity.Collections;
 using UnityEngine;
 using UnityEngine.Assertions;
@@ -112,6 +111,7 @@ namespace Zomg.AsyncTextures
             {
                 InitialComputeBufferSize = width * height;
                 Init();
+                CreateComputeBuffer(InitialComputeBufferSize);
             }
         }
 
@@ -135,11 +135,16 @@ namespace Zomg.AsyncTextures
         {
             token = CancellationTokenSource.CreateLinkedTokenSource(token, _cancellationTokenSource.Token).Token;
 
+#if ZOMG_DEBUG
             Debug.Log("Waiting for my turn...");
+#endif
 
             await _asyncMonitor.WaitAsync(token);
 
+#if ZOMG_DEBUG
             Debug.Log("It's my turn!");
+#endif
+
             if (!_computeShader)
             {
                 Init();
@@ -149,17 +154,21 @@ namespace Zomg.AsyncTextures
             if (_computeBuffer == null || _computeBuffer.count < requiredLength)
             {
                 int size = Math.Max(ToPowerOfTwo(requiredLength), InitialComputeBufferSize);
-
-                Debug.Log($"Creating compute buffer of {size * 4 / 1000 / 1000}MiB");
-
-                // Dipose old
-                _computeBuffer?.Dispose();
-
-                // Create new
-                _computeBuffer = new ComputeBuffer(size, sizeof(uint), ComputeBufferType.Structured, ComputeBufferMode.SubUpdates);
+                CreateComputeBuffer(size);
             }
 
             return _computeBuffer;
+        }
+
+        private void CreateComputeBuffer(int size)
+        {
+            Debug.Log($"Creating compute buffer of {size * 4 / 1000 / 1000}MiB");
+
+            // Dispose old
+            _computeBuffer?.Dispose();
+
+            // Create new
+            _computeBuffer = new ComputeBuffer(size, sizeof(uint), ComputeBufferType.Structured, ComputeBufferMode.SubUpdates);
         }
 
         private void ReturnBuffer()
@@ -267,7 +276,7 @@ namespace Zomg.AsyncTextures
         /// </summary>
         /// <param name="texture">The texture to copy the data into. Must have the <see cref="RenderTexture.enableRandomWrite"/> flag enabled.</param>
         /// <param name="xOffset">X offset from which to copy.</param>
-        /// <param name="yOffset">Y offset from which to copy.</param>
+        /// <param name="yOffset">Y offset from which to copy. Goes from top to bottom.</param>
         /// <param name="width">Amount in the x dimension to copy.</param>
         /// <param name="height">Amount in the y dimension to copy.</param>
         /// <param name="mipLevel">Which mip level to copy into. NOTE: Not properly implemented yet! Mips are automatically generated.</param>
@@ -294,7 +303,11 @@ namespace Zomg.AsyncTextures
                 // Upload to compute buffer (CPU -> GPU)
                 int written = 0;
                 var sw = Stopwatch.StartNew();
+
+#if ZOMG_DEBUG
                 Debug.Log("Starting copying...");
+#endif
+
                 while (written < data.Length)
                 {
                     // Check for cancellation
