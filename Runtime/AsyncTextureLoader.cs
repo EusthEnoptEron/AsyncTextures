@@ -93,11 +93,19 @@ namespace Zomg.AsyncTextures
         }
 
 
+        /// <summary>
+        /// Prewarms the compute shader with the default initial compute buffer size.
+        /// </summary>
         public void Prewarm()
         {
             Prewarm(InitialComputeBufferSize, 1);
         }
 
+        /// <summary>
+        /// Prewarms the compute shader for textures of the given resolution.
+        /// </summary>
+        /// <param name="width"></param>
+        /// <param name="height"></param>
         public void Prewarm(int width, int height)
         {
             if (_computeShader == null)
