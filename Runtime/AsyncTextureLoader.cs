@@ -112,13 +112,23 @@ namespace Zomg.AsyncTextures
         /// </summary>
         /// <param name="width"></param>
         /// <param name="height"></param>
-        public void Prewarm(int width, int height)
+        public async void Prewarm(int width, int height)
         {
             if (_computeShader == null)
             {
                 InitialComputeBufferSize = width * height;
                 Init();
                 CreateComputeBuffer(InitialComputeBufferSize);
+
+                var rt = await AcquireTextureAsync(1, 1, 0, true);
+                try
+                {
+                    await UploadDataAsync(rt, 1, 1, new byte[4]);
+                }
+                finally
+                {
+                    RenderTexture.ReleaseTemporary(rt);
+                }
             }
         }
 
@@ -395,13 +405,14 @@ namespace Zomg.AsyncTextures
         /// Asynchronously loads a texture. Will automatically fall back to the blocking approach if compute shaders are not supported.
         /// </summary>
         /// <param name="input"></param>
+        /// <param name="mipCount"></param>
         /// <returns></returns>
-        public async Task<Texture> LoadTextureAsync(Stream input)
+        public async Task<Texture> LoadTextureAsync(Stream input, int mipCount = -1)
         {
             if (SystemInfo.supportsComputeShaders)
             {
                 var image = await DecodeImageAsync(input);
-                var texture = await AcquireTextureAsync(image.Width, image.Height);
+                var texture = await AcquireTextureAsync(image.Width, image.Height, mipCount);
                 await UploadDataAsync(texture, 0, 0, image.Width, image.Height, 0, image.Data);
                 return texture;
             }
@@ -420,10 +431,11 @@ namespace Zomg.AsyncTextures
         /// Asynchronously loads a texture. Will automatically fall back to the blocking approach if compute shaders are not supported.
         /// </summary>
         /// <param name="bytes"></param>
+        /// <param name="mipCount"></param>
         /// <returns></returns>
-        public Task<Texture> LoadTextureAsync(byte[] bytes)
+        public Task<Texture> LoadTextureAsync(byte[] bytes, int mipCount = -1)
         {
-            return LoadTextureAsync(new MemoryStream(bytes));
+            return LoadTextureAsync(new MemoryStream(bytes), mipCount);
         }
 
         #endregion
