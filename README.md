@@ -30,6 +30,33 @@ return texture;
 As you can see, if you have a `RenderTexture`, you can also update only part of it if you want. This could, for example,
 be used to create and manage a texture atlas. (Origin as at the top left.)
 
+Here's how you could update part of a texture:
+
+```c#
+var textureSize = 1024;
+var tileSize = 256;
+var rt = await AsyncTextureLoader.Instance.AcquireTextureAsync(textureSize, textureSize);
+
+var tasks = new List<Task>();
+for (int x = 0; x < textureSize / tileSize; x++)
+for (int y = 0; y < textureSize / tileSize; y++)
+{
+    int xPos = x;
+    int yPos = y;
+    tasks.Add(Task.Run(async () =>
+    {
+        var data = await _client.GetStreamAsync($"https://picsum.photos/{tileSize}");
+        var decoded = await AsyncTextureLoader.Instance.DecodeImageAsync(data);
+        await AsyncTextureLoader.Instance.UploadDataAsync(rt, xPos * tileSize, yPos * tileSize, tileSize, tileSize, 0, decoded.Data);
+    }));
+}
+
+await Task.WhenAll(tasks);
+```
+
+`UploadDataAsync()` is protected by a semaphore that works in a FIFO manner, so you can just call it from anywhere,
+anytime. Use the cancellation token to abort upload processes.
+
 ### Changing the Decoder Implementation
 
 The package comes with a C# port of the well-known [stb_image.h](https://github.com/nothings/stb) header
